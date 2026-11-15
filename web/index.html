@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scotland's Hydrological Pulse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Young+Serif&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: the sea of the map is the page. The map sits first, unframed, with its title lettered on the open Atlantic;
+     the instruments (clock, record, key, gauge) follow as typed survey notes in indigo ink. */
+  --sea:#D9E8F2;
+  --sea-deep:#C3D9E8;
+  --ink:#1E2E44;
+  --ink-soft:#52657D;
+  --paper:#FAF6EB;
+  --ochre:#8C6D46;
+  --crimson:#9E1418;
+  --rule:rgba(30,46,68,.28);
+  --display:"Young Serif","Source Serif 4",Georgia,serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --type:"Courier Prime","Courier New",Courier,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background-color:var(--sea);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.45;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .12 0 0 0 0 .18 0 0 0 0 .27 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E")}
+.sheet{height:100%;display:grid;grid-template-columns:auto minmax(330px,480px);gap:34px;padding:10px 24px;justify-content:center}
+.mapcol{height:100%;min-height:0;display:flex;justify-content:center}
+.map{position:relative;height:100%;aspect-ratio:44/70;max-width:100%;cursor:crosshair;touch-action:manipulation;container-type:inline-size}
+.map img,.map canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.map img{visibility:hidden}
+h1{position:absolute;z-index:2;left:5.5%;top:4%;margin:0;font-family:var(--display);font-weight:400;font-size:8.3cqw;line-height:1;letter-spacing:-.01em;color:var(--ink);pointer-events:none}
+h1 small{display:block;font-family:var(--type);font-size:2.55cqw;letter-spacing:0;color:var(--ink-soft);margin-top:1.6cqw;line-height:1.3}
+.ghost{visibility:hidden}
+.caret{display:inline-block;width:.07em;height:.82em;background:var(--crimson);margin-left:.04em;vertical-align:-.06em;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.tip{position:absolute;z-index:3;pointer-events:none;background:var(--paper);border:1px solid var(--ink);padding:5px 9px 6px;font-size:14.5px;line-height:1.25;max-width:230px;box-shadow:3px 3px 0 rgba(30,46,68,.18);display:none}
+.tip b{font-weight:600;display:block}
+.tip span{color:var(--ink-soft)}
+.side{display:flex;flex-direction:column;gap:15px;min-height:0;overflow-y:auto;padding:14px 6px 10px 0}
+.lede{margin:0;font-size:16.5px;max-width:48ch;min-height:4.4em}
+h2{font-family:var(--display);font-weight:400;font-size:18.5px;line-height:1.2;margin:0 0 6px}
+.clock{border-top:2px solid var(--ink);border-bottom:1px solid var(--rule);padding:9px 0 9px}
+.clock .when{font-family:var(--display);font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.clock .count{font-family:var(--type);font-size:14.5px;color:var(--ink-soft);margin-top:5px}
+.clock .count b{color:var(--ink)}
+.controls{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
+button,select{font:inherit;font-size:15.5px;color:var(--ink);background:rgba(250,246,235,.7);border:1px solid var(--ink);padding:4px 12px 5px;border-radius:0;cursor:pointer}
+button:hover,select:hover{background:var(--paper)}
+button:focus-visible,select:focus-visible,.strip:focus-visible{outline:2px solid var(--crimson);outline-offset:2px}
+#play{min-width:78px;background:var(--ink);color:var(--paper)}
+#play:hover{background:#2f4563}
+.seg{display:inline-flex;flex-wrap:wrap}
+.seg button+button{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.small{font-size:14.5px;color:var(--ink-soft)}
+.soundnote{margin:-6px 0 0;max-width:56ch}
+.soundnote input{vertical-align:middle;width:110px;accent-color:var(--ink)}
+.soundnote label{color:var(--ink);margin-left:2px}
+#sound[aria-pressed="true"]{background:var(--crimson);border-color:var(--crimson);color:var(--paper)}
+.time{padding-left:34px}
+.time h2{margin-left:-34px}
+.strip{position:relative;height:92px;border:1px solid var(--ink);background:rgba(250,246,235,.5);cursor:ew-resize;touch-action:none}
+.strip canvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
+.strip .head{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--crimson);pointer-events:none}
+.strip .head::before{content:"";position:absolute;top:-5px;left:-4px;border:5px solid transparent;border-top-color:var(--crimson)}
+.we{position:absolute;left:-4px;transform:translateX(-100%);font-family:var(--type);font-size:12px;color:var(--ink-soft);line-height:1}
+.axis{position:relative;height:20px;font-family:var(--type);font-size:12.5px;color:var(--ink-soft)}
+.axis span{position:absolute;top:4px;transform:translateX(-50%);white-space:nowrap}
+.axis span::before{content:"";position:absolute;left:50%;top:-4px;height:4px;border-left:1px solid var(--ink-soft)}
+.ramp{height:14px;border:1px solid var(--ink);background:linear-gradient(90deg,#FAF6EB 0%,#4B6482 32%,#2A8C9E 62%,#D96218 84%,#9E1418 100%)}
+.stops{position:relative;height:74px;font-size:13.5px;line-height:1.2}
+.stops div{position:absolute;top:0;transform:translateX(-50%);text-align:center;white-space:nowrap;padding-top:7px}
+.stops div::before{content:"";position:absolute;left:50%;top:0;height:5px;border-left:1px solid var(--ink)}
+.stops div:first-child{transform:none;text-align:left}.stops div:first-child::before{left:0}
+.stops div:last-child{transform:translateX(-100%);text-align:right;padding-top:41px}.stops div:last-child::before{left:auto;right:0;height:39px}
+.stops i{display:block;font-style:normal;font-family:var(--type);font-size:11.5px;color:var(--ink-soft)}
+.keynote{font-size:14px;color:var(--ink-soft);margin:0}
+.keynote .dash{display:inline-block;width:22px;border-top:1.5px solid rgba(108,82,54,.7);vertical-align:middle;margin-right:6px}
+.gline{margin:9px 0 3px -34px;line-height:1.25}
+.gline .name{font-family:var(--display);font-size:18.5px}
+.gline .meta{font-size:14.5px;color:var(--ink-soft)}
+.gplot{position:relative;height:112px;border:1px solid var(--rule);border-top-color:transparent;cursor:ew-resize;touch-action:none}
+.gplot canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.now{font-family:var(--type);font-size:14.5px;margin:2px 0 3px}
+.swatch{display:inline-block;width:11px;height:11px;border:1px solid var(--ink);border-radius:50%;vertical-align:-1px;margin-right:6px}
+details{font-size:14.5px;color:var(--ink-soft);border-top:1px solid var(--rule);padding-top:9px}
+details summary{cursor:pointer;color:var(--ink);font-family:var(--display);font-size:17px}
+details p{margin:7px 0 0;max-width:62ch}
+details b{color:var(--ink);font-weight:600}
+.err{padding:30px;font-size:18px}
+@media (max-width:880px){
+  html,body{height:auto}
+  .sheet{grid-template-columns:1fr;height:auto;padding:0 16px 16px;gap:4px}
+  .mapcol{height:auto}
+  .map{height:auto;width:min(100%,calc(86svh*44/70))}
+  .side{overflow:visible;padding:6px 0 0}
+}
+@media (prefers-reduced-motion:reduce){.caret{animation:none}}
+</style>
+</head>
+<body>
+<div class="sheet" id="sheet">
+  <div class="mapcol">
+    <div class="map" id="map">
+      <img src="basemap.jpg" alt="Relief map of Scotland with rivers coloured by gauge level" id="base">
+      <canvas id="under"></canvas>
+      <canvas id="rivers"></canvas>
+      <canvas id="over"></canvas>
+      <h1 id="title" aria-label="Scotland's Hydrological Pulse"></h1>
+      <div class="tip" id="tip"></div>
+    </div>
+  </div>
+  <div class="side">
+    <p class="lede" id="lede" aria-label="River levels from 348 SEPA gauges, carried along the OS Open Rivers network. Each river takes its colour from the gauges on it."></p>
+
+    <section class="clock">
+      <div class="when" id="when">&nbsp;</div>
+      <div class="count" id="count">&nbsp;</div>
+    </section>
+
+    <section class="controls">
+      <button id="play" type="button">Pause</button>
+      <label class="small" for="speed">Speed</label>
+      <select id="speed"></select>
+      <button id="peak" type="button">Go to the peak</button>
+      <button id="sound" type="button" aria-pressed="false">Sound off</button>
+    </section>
+    <p class="small soundnote" id="soundnote" hidden></p>
+
+    <section>
+      <h2>Record</h2>
+      <div class="seg" role="group" aria-label="Record">
+        <button type="button" id="rRecent" aria-pressed="true">Last 30 days, hourly</button>
+        <button type="button" id="rLong" aria-pressed="false">Five years, daily</button>
+      </div>
+    </section>
+
+    <section class="time">
+      <h2 id="stripTitle">Gauges from west to east</h2>
+      <div class="strip" id="strip" tabindex="0" role="slider" aria-label="Time" aria-valuemin="0" aria-valuemax="720" aria-valuenow="0">
+        <canvas id="hov"></canvas>
+        <div class="head" id="head"></div>
+        <span class="we" style="top:2px">west</span><span class="we" style="bottom:2px">east</span>
+      </div>
+      <div class="gline"><span class="name" id="gName">&nbsp;</span> <span class="meta" id="gMeta"></span></div>
+      <div class="gplot" id="gplot"><canvas id="spark"></canvas></div>
+      <div class="axis" id="axis"></div>
+      <div class="now" id="gNow">&nbsp;</div>
+      <div class="small">Click or drag either chart to move in time. Point at the map, or click a gauge to pin it.</div>
+    </section>
+
+    <section class="key">
+      <h2>River level, measured against</h2>
+      <div class="controls" style="margin-bottom:10px">
+        <div class="seg" role="group" aria-label="Normalisation">
+          <button type="button" id="mBase" aria-pressed="true">Each gauge's five-year record</button>
+          <button type="button" id="mWin" aria-pressed="false">Low to high of this view</button>
+        </div>
+      </div>
+      <div class="ramp"></div>
+      <div class="stops" id="stops"></div>
+      <p class="keynote"><span class="dash"></span>No gauge on this water, or no reading</p>
+    </section>
+
+    <details>
+      <summary>Sources and method</summary>
+      <p><b>Levels.</b> SEPA time series service (KiWIS). The 30-day view is 15-minute river stage for every gauge reporting in the last three days, sampled hourly. The five-year view is SEPA's daily mean stage. Snapshot taken <span id="gen"></span>. The page holds a saved snapshot and does not refresh itself.</p>
+      <p><b>Five-year record.</b> Each gauge is placed on its own scale from SEPA daily series, November 2021 to November 2026: the 1st percentile of daily mean level reads 0.00, the median 0.32, the 90th percentile 0.62, the 99th percentile 0.84, and the highest daily maximum 1.00. The gauges themselves go back further: the oldest to 1920, half of them to 1990 or earlier.</p>
+      <p><b>West to east strip.</b> Gauges are ordered by easting and split into 22 rows of about 16; each cell is the row's mean level.</p>
+      <p><b>Sound.</b> Synthesised in the browser. Intensity is the mean level of all gauges on the current scale, from 0.20 (silent arpeggio, dark pad) to 0.70 (full). The arpeggio's eight positions are eight groups of gauges from west to east, on a D minor pentatonic scale. It follows the map, so it fades out when playback pauses.</p>
+      <p><b>Rivers.</b> OS Open Rivers watercourse links draining at least 7 km of network, 18,400 km in all. Gauges are snapped to the nearest link within 350 m (342 of 348 snap; the median distance is 13 m). A link takes the first gauge found downstream; between two gauges on one stem it blends them by distance. This is interpolation for display, not a hydraulic model: an ungauged tributary shows the level of the gauge below it.</p>
+      <p><b>Relief.</b> OS Terrain 50 at 100 m, lit from four directions and tinted by height. England and Ireland are shown pale, outlines from Natural Earth.</p>
+      <p>Contains SEPA data &copy; Scottish Environment Protection Agency and database right 2026. Contains OS data &copy; Crown copyright and database right 2026. Made with Natural Earth.</p>
+    </details>
+  </div>
+</div>
+
+<script>
+(async function(){
+const $=id=>document.getElementById(id);
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- typewriter ---------- */
+function typeInto(el,html,cps){            // html may hold <br> and one <small>…</small>
+  return new Promise(done=>{
+    const parts=html.split(/(<br>|<small>|<\/small>)/), chars=[]; let small=false;
+    for(const p of parts){ if(p==='<br>')chars.push(['br']); else if(p==='<small>')small=true; else if(p==='</small>')small=false; else for(const ch of p)chars.push([ch,small]); }
+    const render=n=>{ let a='',b='',inS=false; const put=(c,i)=>{ let s='';
+        if(c[0]==='br')s='<br>'; else { if(c[1]&&!inS){s+='<small>';inS=true;} if(!c[1]&&inS){s+='</small>';inS=false;} s+=c[0]; } return s; };
+      inS=false; for(let i=0;i<n;i++)a+=put(chars[i],i); if(inS){a+='</small>';}
+      inS=false; for(let i=n;i<chars.length;i++)b+=put(chars[i],i); if(inS){b+='</small>';}
+      el.innerHTML=`<span aria-hidden="true">${a}<span class="caret"></span></span><span class="ghost" aria-hidden="true">${b}</span>`; };
+    if(reduce){ render(chars.length); el.querySelector('.caret').remove(); return done(); }
+    let n=0; render(0);
+    const iv=setInterval(()=>{ n++; render(n); if(n>=chars.length){ clearInterval(iv); setTimeout(()=>{const c=el.querySelector('.caret'); if(c)c.remove(); done();},600); } },1000/cps);
+  });
+}
+const typed=typeInto($('title'),"Scotland's<br>Hydrological<br>Pulse<small>River levels, SEPA gauges<br>on OS Open Rivers</small>",26)
+  .then(()=>typeInto($('lede'),$('lede').getAttribute('aria-label'),70));
+
+let D;
+try{ D=await (await fetch('data.json')).json(); }
+catch(e){ $('sheet').innerHTML='<p class="err">The river data file did not load. Reload the page; if it still fails, data.json is missing from this artifact.</p>'; return; }
+
+/* ---------- data ---------- */
+const NS=D.stations.length, KN=[0,.32,.62,.84,1];
+const EXW=(D.extent[2]-D.extent[0])/D.q, EXH=(D.extent[3]-D.extent[1])/D.q;
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+function toBase(k,m){ if(m<=k[0])return 0; for(let i=1;i<5;i++){ if(m<=k[i]) return KN[i-1]+(KN[i]-KN[i-1])*(m-k[i-1])/(k[i]-k[i-1]); } return 1; }
+function makeSet(o,lo,hi,daily){
+  const NF=o.frames, raw=b64(o.series), vWin=new Float32Array(NS*NF), vBase=new Float32Array(NS*NF);
+  for(let s=0;s<NS;s++){ const k=D.stations[s].k;
+    for(let f=0;f<NF;f++){ const r=raw[s*NF+f], i=s*NF+f; if(r===255){vWin[i]=vBase[i]=NaN;continue;}
+      const q=r/254; vWin[i]=q; vBase[i]=toBase(k,lo[s]+q*(hi[s]-lo[s])); } }
+  let peak=0,pb=-1; for(let f=0;f<NF;f++){ let m=0,n=0; for(let s=0;s<NS;s++){const v=vBase[s*NF+f]; if(v===v){m+=v;n++;}} if(n>NS/2&&m/n>pb){pb=m/n;peak=f;} }
+  const d0=new Date(Date.parse(o.t0)), phase=daily?0:d0.getUTCHours();          // bars start at midnight in the hourly view
+  return {NF,raw,lo,hi,vWin,vBase,peak,daily,phase,T0:+d0,STEP:o.stepMin*6e4};
+}
+const SETS={
+  recent:Object.assign(makeSet(D,D.stations.map(s=>s.lo),D.stations.map(s=>s.hi),false),
+    {speeds:[[4,'4 hours a second'],[8,'8 hours a second'],[24,'1 day a second']],speed:8,title:'Gauges from west to east, hour by hour',winLo:'30-day low',winHi:'30-day high'}),
+  long:Object.assign(makeSet(D.long,D.long.lo,D.long.hi,true),
+    {speeds:[[30,'1 month a second'],[91,'3 months a second'],[365,'1 year a second']],speed:91,title:'Gauges from west to east, day by day',winLo:'5-year low',winHi:'5-year high'})
+};
+let DS=SETS.recent, NF=DS.NF, mode='base', V=DS.vBase;
+
+/* ---------- colour ---------- */
+const STOPS=[[0,[250,246,235]],[.32,[75,100,130]],[.62,[42,140,158]],[.84,[217,98,24]],[1,[158,20,24]]];
+const LUTN=96, LUT=[], LUTRGB=[];
+for(let i=0;i<LUTN;i++){const v=i/(LUTN-1); let j=1; while(j<4&&v>STOPS[j][0])j++;
+  const a=STOPS[j-1],b=STOPS[j],t=(v-a[0])/(b[0]-a[0]); const c=a[1].map((x,k)=>Math.round(x+(b[1][k]-x)*t));
+  LUTRGB.push(c); LUT.push('rgb('+c+')');}
+const col=v=>LUT[Math.max(0,Math.min(LUTN-1,Math.round(v*(LUTN-1))))];
+const BANDS=['very low','low to normal','above normal','elevated','rising spate','peak spate'];
+const band=v=>v<.12?BANDS[0]:v<.4?BANDS[1]:v<.62?BANDS[2]:v<.84?BANDS[3]:v<.97?BANDS[4]:BANDS[5];
+
+/* ---------- map canvases ---------- */
+const map=$('map'), under=$('under'), riv=$('rivers'), over=$('over'), uctx=under.getContext('2d'), rctx=riv.getContext('2d'), octx=over.getContext('2d');
+let W=0,H=0,dpr=1,paths=[],sx=1,sy=1, quality=2, slow=0;      // quality steps down if frames run long
+const WIDTH=[.75,1.15,1.8,2.7];
+function build(){
+  const r=map.getBoundingClientRect(); W=r.width; H=r.height; dpr=Math.min(window.devicePixelRatio||1,[1,1.4,2][quality]);
+  for(const c of [under,riv,over]){c.width=Math.round(W*dpr); c.height=Math.round(H*dpr);}
+  bloom.width=Math.ceil(W*BS); bloom.height=Math.ceil(H*BS);
+  sx=W/EXW; sy=H/EXH;
+  paths=D.groups.map(g=>{const p=new Path2D();
+    for(const l of g.l){let x=l[0],y=l[1]; p.moveTo(x*sx,y*sy); for(let i=2;i<l.length;i+=2){x+=l[i];y+=l[i+1];p.lineTo(x*sx,y*sy);} }
+    return p;});
+  drawStatic(); draw();
+}
+function drawStatic(){
+  let c=uctx; const k=Math.max(.7,W/560);
+  c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H); c.lineCap='round'; c.lineJoin='round';
+  const base=$('base');                              // relief, painted once with its edges faded into the page
+  if(base.complete&&base.naturalWidth){ c.drawImage(base,0,0,W,H); c.globalCompositeOperation='destination-in';
+    for(const [x0,y0,x1,y1,a,b] of [[0,0,W,0,.04,.96],[0,0,0,H,.025,.975]]){ const g=c.createLinearGradient(x0,y0,x1,y1);
+      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(a,'#000'); g.addColorStop(b,'#000'); g.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=g; c.fillRect(0,0,W,H); }
+    c.globalCompositeOperation='source-over'; }
+  D.groups.forEach((g,i)=>{ c.strokeStyle=g.a<0?'rgba(108,82,54,.42)':'rgba(72,52,30,.34)'; c.lineWidth=(WIDTH[g.c]+(g.a<0?-.1:.9))*k; c.stroke(paths[i]); });   // sepia bed: what an unlit river looks like
+  c=octx; c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H); c.textAlign='center'; c.textBaseline='middle';
+  const sea=(t,x,y,size,sp)=>{c.font=`${size*k}px "Young Serif",Georgia,serif`; c.fillStyle='rgba(30,46,68,.42)';
+    try{c.letterSpacing=(sp*k)+'px';}catch(e){} c.fillText(t,x*W,y*H); try{c.letterSpacing='0px';}catch(e){}};
+  sea('North Sea',.865,.66,13,5); sea('Atlantic',.16,.355,13,5);
+  c.font=`italic ${11.5*k}px "Source Serif 4",Georgia,serif`; c.fillStyle='rgba(30,46,68,.62)';
+  c.fillText('The Minch',.315*W,.445*H); c.fillText('Moray Firth',.66*W,.5*H); c.fillText('Firth of Forth',.75*W,.752*H);
+  c.font=`italic ${12.5*k}px "Source Serif 4",Georgia,serif`; c.lineWidth=3.2*k; c.lineJoin='round'; c.strokeStyle='rgba(250,246,235,.9)'; c.fillStyle='rgba(30,46,68,.98)';
+  for(const l of D.labels){const x=l.x*sx+7*k,y=l.y*sy-7*k; c.textAlign='left'; c.strokeText(l.n,x,y); c.fillText(l.n,x,y);}
+  const bar=100000/D.q*sx, bx=W-bar-26*k, by=H-26*k; c.strokeStyle=c.fillStyle='rgba(30,46,68,.85)'; c.lineWidth=1;
+  c.beginPath(); c.moveTo(bx,by-4); c.lineTo(bx,by); c.lineTo(bx+bar,by); c.lineTo(bx+bar,by-4); c.moveTo(bx+bar/2,by-3); c.lineTo(bx+bar/2,by); c.stroke();
+  c.font=`${11*k}px "Courier Prime","Courier New",monospace`; c.textAlign='center'; c.fillText('100 km',bx+bar/2,by-9*k);
+}
+
+/* ---------- frame ---------- */
+let t=0, playing=true, speed=8, last=0, sel=-1, hover=-1;
+const bloom=document.createElement('canvas'), bctx=bloom.getContext('2d'), BS=.4;
+const cur=new Float32Array(NS), disp=new Float32Array(NS).fill(NaN); let tPrev=-1;
+// What is drawn eases toward the data: quick to rise, slow to drain, like a hydrograph. dt<0 means jump straight there.
+function ease(dt){
+  const f1=Math.min(NF-1,Math.floor(t)), f0=Math.floor(tPrev), span=(dt>=0&&tPrev>=0&&f1>f0)?f1-f0:0;
+  const up=dt<0?1:1-Math.exp(-dt/.09), down=dt<0?1:1-Math.exp(-dt/.42);
+  for(let s=0;s<NS;s++){ let g=cur[s];
+    if(span>=2){ let m=0,n=0; for(let f=f0+1;f<=f1;f++){const v=V[s*NF+f]; if(v===v){m+=v;n++;}} g=n?m/n:NaN; }   // fast playback: average the frames skipped
+    const d=disp[s]; disp[s]=(g!==g||d!==d)?g:d+(g-d)*(g>d?up:down); }
+  tPrev=t;
+}
+function sample(){const f=Math.min(NF-2,Math.floor(t)),a=t-f; for(let s=0;s<NS;s++){const i=s*NF+f, v0=V[i], v1=V[i+1]; cur[s]=a<1e-6?v0:v0+(v1-v0)*a;}}
+function draw(dt){
+  sample(); ease(dt===undefined?-1:dt);
+  const c=rctx,k=Math.max(.7,W/560); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H); c.lineCap='round'; c.lineJoin='round';
+  const G=D.groups, gv=new Float32Array(G.length);
+  for(let i=0;i<G.length;i++){const g=G[i]; if(g.a<0){gv[i]=NaN;continue;} const va=disp[g.a];
+    if(g.b<0){gv[i]=va;continue;} const vb=disp[g.b]; gv[i]=va!==va?vb:(vb!==vb?va:g.w*va+(1-g.w)*vb);}
+  // wet bloom where water is high: painted small and scaled up, so it is soft and cheap
+  const bc=bctx; bc.setTransform(BS,0,0,BS,0,0); bc.clearRect(0,0,W,H); bc.lineCap='round'; bc.lineJoin='bevel'; let any=false;
+  if(quality) for(let i=0;i<G.length;i++){const v=gv[i]; if(!(v>=.6)||(quality<2&&G[i].c<1))continue; any=true; bc.strokeStyle=col(v); bc.lineWidth=(WIDTH[G[i].c]*2+2.4+(v-.6)*6)*k; bc.stroke(paths[i]);}
+  if(any){ c.globalAlpha=.3; c.imageSmoothingEnabled=true; c.drawImage(bloom,0,0,W,H); c.globalAlpha=1; }
+  c.lineJoin='bevel';
+  for(let i=0;i<G.length;i++){const v=gv[i]; if(!(v>=0))continue; c.strokeStyle=col(v); c.lineWidth=(WIDTH[G[i].c]+Math.max(0,v-.5)*1.1)*k; c.stroke(paths[i]);}
+  c.lineWidth=.7*k; c.strokeStyle='rgba(30,46,68,.8)';
+  const ring=new Path2D();
+  for(let s=0;s<NS;s++){const st=D.stations[s], v=disp[s], x=st.x*sx, y=st.y*sy, r=(s===sel||s===hover?4.2:2.1)*k;
+    if(v===v){c.fillStyle=col(v); c.beginPath(); c.arc(x,y,r,0,6.283); c.fill();} ring.moveTo(x+r,y); ring.arc(x,y,r,0,6.283);}
+  c.stroke(ring);
+  const hi=hover>=0?hover:sel;
+  if(hi>=0){const st=D.stations[hi]; c.lineWidth=1.4*k; c.strokeStyle='#1E2E44'; c.beginPath(); c.arc(st.x*sx,st.y*sy,7.5*k,0,6.283); c.stroke();}
+  readout();
+}
+const DAY=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const p2=n=>String(n).padStart(2,'0');
+function fmt(ms,daily){const d=new Date(ms), base=`${DAY[d.getUTCDay()]} ${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`; return daily?base:`${base}, ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())} UTC`;}
+const when=()=>fmt(DS.T0+Math.round(t)*DS.STEP,DS.daily);
+const memo={}; function setText(id,v){ if(memo[id]!==v){memo[id]=v; $(id).textContent=v;} } function setHTML(id,v){ if(memo[id]!==v){memo[id]=v; $(id).innerHTML=v;} }
+function readout(){
+  setText('when',when());
+  let e=0,sp=0,n=0; for(let s=0;s<NS;s++){const v=cur[s]; if(v!==v)continue; n++; if(v>=.62)e++; if(v>=.84)sp++; }
+  setHTML('count',`<b>${e}</b> of ${n} gauges elevated or higher, <b>${sp}</b> in spate`);
+  $('head').style.left=(t/(NF-1)*100)+'%'; $('strip').setAttribute('aria-valuenow',Math.round(t)); $('strip').setAttribute('aria-valuetext',when());
+  gauge();
+}
+
+/* ---------- west-east strip ---------- */
+const NB=22, hov=$('hov'), hctx=hov.getContext('2d');
+const rank=D.stations.map((s,i)=>i).sort((a,b)=>D.stations[a].x-D.stations[b].x), bandOf=new Array(NS);
+rank.forEach((s,i)=>{bandOf[s]=Math.floor(i/NS*NB);});
+function drawStrip(){
+  hov.width=NF; hov.height=NB; const im=hctx.createImageData(NF,NB), sum=new Float32Array(NB), n=new Uint16Array(NB);
+  for(let f=0;f<NF;f++){ sum.fill(0); n.fill(0);
+    for(let s=0;s<NS;s++){const v=V[s*NF+f]; if(v===v){sum[bandOf[s]]+=v; n[bandOf[s]]++;}}
+    for(let b=0;b<NB;b++){ if(!n[b])continue; const o=(b*NF+f)*4, c=LUTRGB[Math.round(sum[b]/n[b]*(LUTN-1))]; im.data[o]=c[0];im.data[o+1]=c[1];im.data[o+2]=c[2];im.data[o+3]=255; } }
+  hctx.putImageData(im,0,0);
+}
+function drawAxis(){ let html='';
+  for(let f=0;f<NF-NF*.04;f++){const d=new Date(DS.T0+f*DS.STEP);
+    if(DS.daily){ if(d.getUTCMonth()===0&&d.getUTCDate()===1) html+=`<span style="left:${f/(NF-1)*100}%">${d.getUTCFullYear()}</span>`; }
+    else if(d.getUTCHours()===0&&d.getUTCDate()%5===0) html+=`<span style="left:${f/(NF-1)*100}%">${d.getUTCDate()} ${MON[d.getUTCMonth()]}</span>`; }
+  $('axis').innerHTML=html; }
+const strip=$('strip');
+for(const el of [strip,$('gplot')]){                 // both charts share one time axis; either one scrubs
+  const seek=ev=>{const r=el.getBoundingClientRect(), b=el.clientLeft; t=Math.max(0,Math.min(NF-1,(ev.clientX-r.left-b)/el.clientWidth*(NF-1))); draw();};
+  el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId); seek(e); el.onpointermove=seek;});
+  el.addEventListener('pointerup',()=>{el.onpointermove=null;});
+  el.addEventListener('pointercancel',()=>{el.onpointermove=null;});
+}
+strip.addEventListener('keydown',e=>{const step=e.shiftKey?(DS.daily?30:24):1;
+  if(e.key==='ArrowRight'){t=Math.min(NF-1,Math.round(t)+step);draw();e.preventDefault();}
+  if(e.key==='ArrowLeft'){t=Math.max(0,Math.round(t)-step);draw();e.preventDefault();}});
+
+/* ---------- legend, mode, record ---------- */
+function stops(){const base=mode==='base';
+  const L=[['Very low',base?'1st pct':DS.winLo],['Normal',base?'median':''],['Elevated',base?'90th pct':''],['Rising spate',base?'99th pct':''],['Peak spate',base?'5-yr high':DS.winHi]];
+  $('stops').innerHTML=L.map((l,i)=>`<div style="left:${KN[i]*100}%">${l[0]}<i>${KN[i].toFixed(2)}${l[1]?' '+l[1]:''}</i></div>`).join('');}
+function setMode(m){mode=m; V=m==='base'?DS.vBase:DS.vWin; $('mBase').setAttribute('aria-pressed',m==='base'); $('mWin').setAttribute('aria-pressed',m!=='base'); stops(); drawStrip(); draw();}
+$('mBase').onclick=()=>setMode('base'); $('mWin').onclick=()=>setMode('win');
+function setRecord(id,start){
+  DS=SETS[id]; NF=DS.NF; V=mode==='base'?DS.vBase:DS.vWin; speed=DS.speed;
+  $('rRecent').setAttribute('aria-pressed',id==='recent'); $('rLong').setAttribute('aria-pressed',id==='long');
+  $('speed').innerHTML=DS.speeds.map(o=>`<option value="${o[0]}"${o[0]===speed?' selected':''}>${o[1]}</option>`).join('');
+  $('stripTitle').textContent=DS.title; strip.setAttribute('aria-valuemax',NF-1);
+  t=start; shown=-1; sKey=''; tPrev=-1; disp.fill(NaN); stops(); drawStrip(); drawAxis(); if(W)draw();
+}
+$('rRecent').onclick=()=>setRecord('recent',Math.max(0,SETS.recent.peak-60));
+$('rLong').onclick=()=>setRecord('long',0);
+
+/* ---------- gauge panel ---------- */
+const spark=$('spark'), sctx=spark.getContext('2d'), sbuf=document.createElement('canvas'); let shown=-1, sKey='', sGeo=null;
+function gaugeStatic(s,w,h){                      // trace and percentile rules: drawn once per gauge, record and size
+  const st=D.stations[s], lo=DS.lo[s], hi=DS.hi[s];
+  sbuf.width=Math.round(w*dpr); sbuf.height=Math.round(h*dpr); const c=sbuf.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+  const padL=0,padR=0,padT=9,padB=5, y0=Math.min(lo,st.k[1]), y1=Math.max(hi,st.k[3]);
+  const X=f=>padL+f/(NF-1)*(w-padL-padR), Y=m=>padT+(1-(m-y0)/(y1-y0))*(h-padT-padB);
+  c.font='11.5px "Courier Prime","Courier New",monospace'; c.textBaseline='middle'; c.fillStyle='#52657D'; c.strokeStyle='rgba(30,46,68,.32)'; c.lineWidth=1; c.setLineDash([3,3]);
+  const rules=[['99th pct',st.k[3]],['90th pct',st.k[2]],['median',st.k[1]]];
+  for(const [n,m] of rules){const y=Y(m); c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke();}
+  c.setLineDash([]);
+  const m=f=>{const q=DS.raw[s*NF+f]; return q===255?NaN:lo+q/254*(hi-lo);};
+  c.beginPath(); let pen=false; for(let f=0;f<NF;f++){const v=m(f); if(v!==v){pen=false;continue;} const x=X(f),y=Y(v); pen?c.lineTo(x,y):c.moveTo(x,y); pen=true;}
+  c.strokeStyle='#1E2E44'; c.lineWidth=DS.daily?1:1.3; c.lineJoin='round'; c.stroke();
+  let ly=-99; c.textAlign='right'; c.textBaseline='alphabetic'; c.lineWidth=3.5; c.strokeStyle='rgba(217,232,242,.92)'; c.fillStyle='#52657D';
+  for(const [n,m] of rules){const y=Y(m)-3; if(Math.abs(y-ly)<12||y<11)continue; ly=y; const tx=`${n} ${m.toFixed(2)} m`; c.strokeText(tx,w-4,y); c.fillText(tx,w-4,y);}
+  sGeo={X,Y,m,padT,padB};
+}
+function gauge(){
+  const s=hover>=0?hover:sel; if(s<0)return; const st=D.stations[s];
+  if(s!==shown){shown=s; $('gName').textContent=st.n; $('gMeta').textContent=[st.r||null,st.c+' catchment'].filter(Boolean).join(', '); $('gplot').setAttribute('aria-label','Level at '+st.n+' over the record');}
+  const w=spark.clientWidth,h=spark.clientHeight, key=[s,DS.daily,w,h,dpr].join();
+  if(key!==sKey){ sKey=key; spark.width=Math.round(w*dpr); spark.height=Math.round(h*dpr); gaugeStatic(s,w,h); }
+  const c=sctx; c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,spark.width,spark.height); c.drawImage(sbuf,0,0); c.setTransform(dpr,0,0,dpr,0,0);
+  const {X,Y,m,padT,padB}=sGeo, f=Math.round(t), mm=m(f);
+  c.strokeStyle='rgba(158,20,24,.7)'; c.lineWidth=1; c.beginPath(); c.moveTo(X(f),padT-4); c.lineTo(X(f),h-padB); c.stroke();
+  if(mm===mm){ c.beginPath(); c.arc(X(f),Y(mm),4.5,0,6.283); c.fillStyle=col(cur[s]); c.fill(); c.strokeStyle='#1E2E44'; c.stroke();
+    setHTML('gNow',`<span class="swatch" style="background:${col(cur[s])}"></span>${mm.toFixed(2)} m, ${band(cur[s])} (${cur[s].toFixed(2)})`); }
+  else setHTML('gNow','No reading on this day');
+}
+
+/* ---------- pointer on map ---------- */
+const tip=$('tip');
+function nearest(ev){const r=map.getBoundingClientRect(), mx=ev.clientX-r.left,my=ev.clientY-r.top; let best=-1,bd=18*18;
+  for(let s=0;s<NS;s++){const st=D.stations[s],dx=st.x*sx-mx,dy=st.y*sy-my,d=dx*dx+dy*dy; if(d<bd){bd=d;best=s;}} return [best,mx,my];}
+map.addEventListener('pointermove',ev=>{const [s,mx,my]=nearest(ev); if(s!==hover){hover=s; if(!playing)draw();}
+  if(s<0){tip.style.display='none';return;}
+  const st=D.stations[s]; tip.innerHTML=`<b>${st.n}</b><span>${st.r||st.c}</span>`; tip.style.display='block';
+  tip.style.left=Math.max(4,Math.min(mx+14,W-tip.offsetWidth-4))+'px'; tip.style.top=Math.max(4,my-tip.offsetHeight-10)+'px';});
+map.addEventListener('pointerleave',()=>{hover=-1; tip.style.display='none'; if(!playing)draw();});
+map.addEventListener('click',ev=>{const [s]=nearest(ev); if(s>=0){sel=s; draw();}});
+
+
+/* ---------- sound: a pad, a river-noise bed and an arpeggio, all scaled by how high the water is ---------- */
+const PENTA=[0,3,5,7,10], ROOT=50, BPM=92, GRID=60/BPM/4, ARP=[0,2,4,2,1,3,5,3];      // D minor pentatonic from D3
+const hz=n=>440*Math.pow(2,(n-69)/12), degree=d=>ROOT+12*Math.floor(d/5)+PENTA[d%5];
+function makeIR(ctx,secs){                                  // reverb tail: noise that decays and darkens
+  const n=Math.floor(ctx.sampleRate*secs), buf=ctx.createBuffer(2,n,ctx.sampleRate);
+  for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch); let lp=0;
+    for(let i=0;i<n;i++){ const x=i/n; lp+=(.5-.44*Math.sqrt(x))*((Math.random()*2-1)-lp); d[i]=lp*Math.pow(1-x,2)*Math.exp(-4.2*x); } }
+  return buf;
+}
+function makeNoise(ctx,secs){                               // pink noise, two decorrelated channels
+  const n=Math.floor(ctx.sampleRate*secs), buf=ctx.createBuffer(2,n,ctx.sampleRate);
+  for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch); let b0=0,b1=0,b2=0;
+    for(let i=0;i<n;i++){ const w=Math.random()*2-1; b0=.99765*b0+w*.0990460; b1=.96300*b1+w*.2965164; b2=.57000*b2+w*1.0526913; d[i]=(b0+b1+b2+w*.1848)*.12; } }
+  return buf;
+}
+function buildEngine(ctx){
+  const G=v=>{const g=ctx.createGain(); g.gain.value=v; return g;};
+  const BQ=(type,f,q)=>{const b=ctx.createBiquadFilter(); b.type=type; b.frequency.value=f; if(q)b.Q.value=q; return b;};
+  const pan=p=>{const n=ctx.createStereoPanner(); n.pan.value=p; return n;};
+  const master=G(0), air=BQ('highshelf',5500), comp=ctx.createDynamicsCompressor();
+  air.gain.value=-5; comp.threshold.value=-14; comp.knee.value=14; comp.ratio.value=3; comp.attack.value=.03; comp.release.value=.5;
+  master.connect(air); air.connect(comp); comp.connect(ctx.destination);
+  // space: a long convolution reverb, and a dotted-eighth ping-pong delay that feeds it
+  const revIn=G(1), pre=ctx.createDelay(.1), rev=ctx.createConvolver(), revOut=G(.85);
+  pre.delayTime.value=.03; rev.buffer=makeIR(ctx,5.5); revIn.connect(pre); pre.connect(rev); rev.connect(revOut); revOut.connect(master);
+  const dIn=G(1), dl=ctx.createDelay(2), dr=ctx.createDelay(2), fb=G(.4), dlp=BQ('lowpass',2200), mg=ctx.createChannelMerger(2), dOut=G(.55);
+  dl.delayTime.value=dr.delayTime.value=GRID*3; dIn.connect(dl); dl.connect(dr); dr.connect(dlp); dlp.connect(fb); fb.connect(dl);
+  dl.connect(mg,0,0); dr.connect(mg,0,1); mg.connect(dOut); dOut.connect(master); dOut.connect(revIn);
+  // pad: detuned saws through a low-pass that opens as the water rises; upper chord tones enter with it
+  const f1=BQ('lowpass',240,.4), f2=BQ('lowpass',240,.9), padDry=G(.5), padRev=G(.6);
+  f1.connect(f2); f2.connect(padDry); padDry.connect(master); f2.connect(padRev); padRev.connect(revIn);
+  const lfo=ctx.createOscillator(), lfoG=G(40); lfo.frequency.value=.055; lfo.connect(lfoG); lfoG.connect(f1.frequency); lfoG.connect(f2.frequency); lfo.start();
+  const voices=[[38,.12,0],[45,.2,0],[50,.26,0],[57,.24,0],[64,.18,0],[53,.22,.22],[60,.2,.42],[65,.17,.58],[69,.14,.72],[72,.11,.85]].map(([n,g,from],i)=>{
+    const vg=G(from?0:g), p=pan(((i%3)-1)*.35); vg.connect(p); p.connect(f1);
+    for(const cents of [-7,6]){ const o=ctx.createOscillator(); o.type='sawtooth'; o.frequency.value=hz(n); o.detune.value=cents+(i%2?2:-2); const og=G(.11); o.connect(og); og.connect(vg); o.start(); }
+    return {vg,g,from};});
+  const sub=ctx.createOscillator(), subG=G(.015); sub.frequency.value=hz(38); sub.connect(subG); subG.connect(master); sub.start();
+  // river: band-passed pink noise that swells and brightens with the level
+  const ns=ctx.createBufferSource(), bp=BQ('bandpass',320,.45), hp=BQ('highpass',140), nG=G(.01), swell=G(1), sl=ctx.createOscillator(), slG=G(.22);
+  ns.buffer=makeNoise(ctx,6); ns.loop=true; ns.connect(bp); bp.connect(hp); hp.connect(swell); swell.connect(nG); nG.connect(master); const nRev=G(.35); nG.connect(nRev); nRev.connect(revIn);
+  sl.frequency.value=.11; sl.connect(slG); slG.connect(swell.gain); sl.start(); ns.start();
+  const sm=(x,a,w)=>{const u=Math.max(0,Math.min(1,(x-a)/w)); return u*u*(3-2*u);};
+  return { ctx, master,
+    set(I,t,tau){ const cut=520+2700*Math.pow(I,1.3);
+      f1.frequency.setTargetAtTime(cut,t,tau); f2.frequency.setTargetAtTime(cut,t,tau); lfoG.gain.setTargetAtTime(cut*.16,t,tau);
+      for(const v of voices) if(v.from) v.vg.gain.setTargetAtTime(v.g*sm(I,v.from,.18),t,tau);
+      padDry.gain.setTargetAtTime(.42+.3*I,t,tau); subG.gain.setTargetAtTime(.015+.05*I,t,tau);
+      nG.gain.setTargetAtTime(.012+.17*I*I,t,tau); bp.frequency.setTargetAtTime(300+1300*I,t,tau); },
+    note(t,midi,vel,p,bright){                              // FM bell: sine carrier, sine modulator whose depth dies away
+      const f=hz(midi), c=ctx.createOscillator(), c2=ctx.createOscillator(), m=ctx.createOscillator(), md=G(0), g=G(0), lp=BQ('lowpass',1100+4200*bright), pn=pan(p), sD=G(.4), sR=G(.34);
+      c.frequency.value=f; c2.frequency.value=f; c2.detune.value=6; m.frequency.value=f*2;
+      md.gain.setValueAtTime(f*(.35+1.9*bright)*vel,t); md.gain.exponentialRampToValueAtTime(f*.02,t+.4);
+      m.connect(md); md.connect(c.frequency);
+      g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vel*.3,t+.008); g.gain.setTargetAtTime(0,t+.008,.22+.3*(1-bright));
+      c.connect(g); c2.connect(g); g.connect(lp); lp.connect(pn); pn.connect(master); pn.connect(sD); sD.connect(dIn); pn.connect(sR); sR.connect(revIn);
+      for(const o of [c,c2,m]){o.start(t); o.stop(t+2.6);} }
+  };
+}
+// one grid step of the arpeggio: how often it plays, how high and how bright, all come from the levels
+function arpStep(E,time,st,I,bands){
+  const every=I<.12?8:I<.3?4:I<.55?2:1, n=st.grid++; if(n%every)return;
+  const k=st.arp++, b=k%8, lv=bands[b];
+  const d=Math.min(15,3+ARP[k%8]+Math.round(lv*6)+((I>.8&&k%2)?5:0));
+  E.note(time,degree(d),(.3+.7*lv)*(.55+.45*I)*(n%4?1:1.15),-.7+1.4*b/7,Math.min(1,.12+.9*lv*(.4+.6*I)));
+}
+let AC=null, ENG=null, soundOn=false, vol=.8, nextT=0, Ism=0, lastSet=0; const arpState={grid:0,arp:0}, bandLv=new Float32Array(8);
+window.pulseSound={buildEngine,arpStep,GRID};
+function soundLevels(dt){
+  let sum=0,n=0; const bs=new Float32Array(8), bn=new Uint16Array(8);
+  for(let s=0;s<NS;s++){const v=cur[s]; if(v!==v)continue; sum+=v;n++; const b=Math.min(7,bandOf[s]*8/NB|0); bs[b]+=v; bn[b]++;}
+  if(!n)return; const mean=sum/n, I=Math.max(0,Math.min(1,(mean-.2)/.5));
+  Ism+=(I-Ism)*(1-Math.exp(-dt/.35));
+  for(let b=0;b<8;b++){const lv=bn[b]?bs[b]/bn[b]:mean; bandLv[b]+=(lv-bandLv[b])*(1-Math.exp(-dt/.25));}
+  const now=AC.currentTime; if(now-lastSet>.08){ lastSet=now; ENG.set(Ism,now,.4); }
+}
+function soundGate(){ if(!ENG)return; const on=soundOn&&playing, now=AC.currentTime;
+  ENG.master.gain.cancelScheduledValues(now); ENG.master.gain.setTargetAtTime(on?vol:0,now,on?.6:.3); }
+setInterval(()=>{ if(!soundOn||!playing||!ENG)return; const now=AC.currentTime; if(nextT<now)nextT=now+.06;
+  while(nextT<now+.2){ arpStep(ENG,nextT,arpState,Ism,bandLv); nextT+=GRID; } },40);
+function soundNote(){ $('soundnote').hidden=!soundOn; if(!soundOn)return;
+  $('soundnote').innerHTML='A pad, a bed of river noise and an arpeggio, all driven by the mean level of the gauges. Low water is dark, slow and sparse; as rivers rise the pad opens and thickens, the noise swells, and the arpeggio quickens and climbs. Its notes sweep west (left) to east (right); a region in spate plays higher and brighter. <label for="vol">Volume</label> <input type="range" id="vol" min="0" max="1" step="0.05" value="'+vol+'">';
+  $('vol').oninput=e=>{vol=+e.target.value; soundGate();}; }
+$('sound').onclick=async()=>{
+  soundOn=!soundOn; let failed=false;
+  try{ if(soundOn){ if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)(); ENG=buildEngine(AC);} await AC.resume(); sample(); Ism=0; soundLevels(10); ENG.set(Ism,AC.currentTime,.05); } }
+  catch(e){ soundOn=false; failed=true; }
+  $('sound').setAttribute('aria-pressed',soundOn); $('sound').textContent=soundOn?'Sound on':'Sound off'; soundNote();
+  if(failed){ $('soundnote').hidden=false; $('soundnote').textContent='This browser would not start audio. Click Sound again.'; }
+  if(soundOn&&!playing) setPlay(true); else soundGate();
+};
+
+/* ---------- playback ---------- */
+function setPlay(p){playing=p; $('play').textContent=p?'Pause':'Play'; soundGate(); if(p){last=0; requestAnimationFrame(tick);}}
+function tick(now){ if(!playing)return; if(last){t+=Math.min(.25,(now-last)/1000)*speed; if(t>=NF-1)t=0;} const dt=last?Math.min(.25,(now-last)/1000):0; last=now;
+  if(dt>.03&&quality){ slow+=dt; if(slow>1.5){quality--; slow=0; build();} } else slow=Math.max(0,slow-dt*.5);
+  draw(dt); if(soundOn&&ENG)soundLevels(dt||.016); requestAnimationFrame(tick);}
+$('play').onclick=()=>setPlay(!playing);
+$('speed').onchange=e=>{speed=+e.target.value; DS.speed=speed;};
+$('peak').onclick=()=>{setPlay(false); t=DS.peak; draw();};
+document.addEventListener('keydown',e=>{ if(e.key===' '&&!/^(BUTTON|SELECT|INPUT|SUMMARY)$/.test(document.activeElement.tagName)){e.preventDefault(); setPlay(!playing);} });
+
+/* ---------- start ---------- */
+let big=0; D.stations.forEach((s,i)=>{ if((s.u||0)>(D.stations[big].u||0)) big=i; }); sel=big;
+$('gen').textContent=fmt(Date.parse(D.generated),false);
+setRecord('recent',reduce?SETS.recent.peak:Math.max(0,SETS.recent.peak-60));
+if(document.fonts&&document.fonts.ready){ try{ await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]); }catch(e){} }
+build();
+$('base').addEventListener('load',()=>{ if(W)drawStatic(); });
+new ResizeObserver(()=>{const r=map.getBoundingClientRect(); if(Math.abs(r.width-W)>1||Math.abs(r.height-H)>1)build();}).observe(map);
+if(document.fonts&&document.fonts.addEventListener) document.fonts.addEventListener('loadingdone',()=>{ if(W)drawStatic(); });
+if(reduce){ playing=false; $('play').textContent='Play'; draw(); } else setPlay(true);
+})();
+</script>
+</body>
+</html>

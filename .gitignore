@@ -1,0 +1,6 @@
+# Large or licensed inputs: fetch with the pipeline, do not commit
+data/
+work/
+build/
+__pycache__/
+*.pyc
